@@ -9,6 +9,7 @@ light/dark scheme, fades in and out, and does not auto-hide while the pointer is
 from __future__ import annotations
 
 import sys
+import time
 
 from PySide6.QtCore import QEasingCurve, QPropertyAnimation, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QFont, QGuiApplication, QPainter, QPen
@@ -74,12 +75,20 @@ class BatteryPopup(QWidget):
     mode_selected = Signal(int)
     connect_clicked = Signal()
 
+    PASSIVE_FLAGS = Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.WindowDoesNotAcceptFocus
+    INTERACTIVE_FLAGS = Qt.Popup | Qt.FramelessWindowHint
+
     def __init__(self, seconds: int = 10):
-        super().__init__(None, Qt.Tool | Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.WindowDoesNotAcceptFocus)
+        flags = self.PASSIVE_FLAGS
+        if sys.platform.startswith("linux"):
+            flags |= Qt.X11BypassWindowManagerHint  # never a taskbar entry, placed exactly where asked
+        super().__init__(None, flags)
         self.setObjectName("podsPopup")
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_ShowWithoutActivating)
         self.seconds = seconds
+        self.interactive = False
+        self.hidden_at = 0.0
         self.pal = theme.palette()
         self._hover = False
         self._timer = QTimer(self)
@@ -209,7 +218,23 @@ class BatteryPopup(QWidget):
         self.adjustSize()
 
     # ---- showing / hiding --------------------------------------------------------------
-    def show_for(self, seconds: int | None = None) -> None:
+    def _set_mode(self, interactive: bool) -> None:
+        """Passive: a tool window that never takes focus (case opened). Interactive: a real
+        popup like the Wi-Fi menu, closed by any click outside it (tray icon click)."""
+        if interactive == self.interactive and self.windowHandle() is not None:
+            return
+        flags = self.INTERACTIVE_FLAGS if interactive else self.PASSIVE_FLAGS
+        if not interactive and sys.platform.startswith("linux"):
+            flags |= Qt.X11BypassWindowManagerHint
+        was_visible = self.isVisible()
+        if was_visible:
+            self.hide()
+        self.setWindowFlags(flags)
+        self.setAttribute(Qt.WA_ShowWithoutActivating, not interactive)
+        self.interactive = interactive
+
+    def show_for(self, seconds: int | None = None, interactive: bool = False) -> None:
+        self._set_mode(interactive)
         self.adjustSize()
         self._place()
         self._fade.stop()
@@ -222,7 +247,17 @@ class BatteryPopup(QWidget):
         else:
             self.effect.setOpacity(1.0)
         self.raise_()
-        self._timer.start(int((seconds or self.seconds) * 1000))
+        if interactive:
+            self._timer.stop()  # stays until a click outside or the close button
+        else:
+            self._timer.start(int((seconds or self.seconds) * 1000))
+
+    def recently_hidden(self, within: float = 0.5) -> bool:
+        return (time.monotonic() - self.hidden_at) < within
+
+    def hideEvent(self, event) -> None:  # noqa: N802
+        self.hidden_at = time.monotonic()
+        super().hideEvent(event)
 
     def hide_animated(self) -> None:
         if not self.isVisible():

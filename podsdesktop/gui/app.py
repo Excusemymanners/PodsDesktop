@@ -137,9 +137,16 @@ class PodsApp:
 
     # ---- windows -----------------------------------------------------------------------
     def show_popup(self) -> None:
+        """Tray click: toggle. A click on the icon while the popup is open closes it (the popup
+        closes itself on the outside click, so the activation that follows must not reopen it)."""
+        if self.popup.isVisible():
+            self.popup.hide_animated()
+            return
+        if self.popup.recently_hidden():
+            return
         if self.state is not None:
             self.popup.update_state(self.state)
-        self.popup.show_for()
+        self.popup.show_for(interactive=True)
 
     def open_wizard(self) -> None:
         if self.wizard is not None:
@@ -236,7 +243,9 @@ class PodsApp:
             self.engine.devices = [PairedDevice(demo_address, "Luca’s AirPods Pro", 0x004C, 0x2014, True)]
             QTimer.singleShot(300, self.open_settings)
         else:
-            self.popup.show_for(120)
+            import os
+
+            self.popup.show_for(120, interactive=os.environ.get("PODSDESKTOP_PREVIEW_INTERACTIVE") == "1")
         if self.force_setup:
             from ..core.bluetooth import PairedDevice
 
