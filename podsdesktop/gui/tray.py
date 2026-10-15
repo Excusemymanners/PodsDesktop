@@ -154,7 +154,7 @@ class Tray(QObject):
         self.a_disconnect.setEnabled(bool(state.address) and state.connected)
         self.a_keys.setEnabled(aap_live)
         self.a_keys.setVisible(sys.platform.startswith("linux") and not self.settings.keys_known)
-        self.icon.setIcon(tray_icon(state, dark=True, show_percent=self.settings.tray_show_percent))
+        self.icon.setIcon(tray_icon(state, show_percent=self.settings.tray_show_percent))
         tooltip = [name]
         if state.has_battery:
             tooltip.append(state.levels_text())

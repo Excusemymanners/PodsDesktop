@@ -13,9 +13,9 @@ from .. import __version__
 from ..core import autostart
 from ..core.engine import Engine
 from ..core.settings import Settings
-from ..core.state import DeviceState
+from ..core.state import Component, DeviceState
 from ..protocol import aap
-from . import i18n, images
+from . import i18n, images, theme
 from .bridge import EngineBridge
 from .low_latency import SilenceKeeper
 from .popup import BatteryPopup
@@ -27,14 +27,16 @@ log = logging.getLogger(__name__)
 
 
 class PodsApp:
-    def __init__(self, settings: Settings, force_setup: bool = False):
+    def __init__(self, settings: Settings, force_setup: bool = False, preview: str | None = None):
         self.settings = settings
         self.force_setup = force_setup
+        self.preview = preview
         i18n.set_language(settings.language)
         self.qt = QApplication.instance() or QApplication(sys.argv)
         self.qt.setApplicationName("PodsDesktop")
         self.qt.setWindowIcon(images.app_icon())
         self.qt.setQuitOnLastWindowClosed(False)
+        self.qt.setStyleSheet(theme.stylesheet(theme.palette()))
         self.engine = Engine(settings)
         self.bridge = EngineBridge(self.engine)
         self.bridge.event.connect(self.on_event)
@@ -60,6 +62,10 @@ class PodsApp:
         t.settings_clicked.connect(self.open_settings)
         t.about_clicked.connect(self.show_about)
         t.quit_clicked.connect(self.quit)
+        if not getattr(self, "_popup_wired", False):
+            self._popup_wired = True
+            self.popup.mode_selected.connect(lambda mode: self.bridge.call(self.engine.set_noise_mode(mode)))
+            self.popup.connect_clicked.connect(lambda: self.bridge.call(self.engine.connect_device()))
 
     # ---- events from the engine ------------------------------------------------------
     def on_event(self, name: str, payload) -> None:
@@ -204,7 +210,42 @@ class PodsApp:
         self.bridge.stop()
         self.qt.quit()
 
+    def run_preview(self) -> int:
+        """Design/screenshot mode: demo data, no radio, no engine thread."""
+        demo_address = self.settings.device_address or "00:11:22:33:44:55"
+        state = DeviceState(address=demo_address, name="Luca’s AirPods Pro", model_id=0x2014, firmware="7B19",
+                            left=Component(87, True, False, True, True), right=Component(85, False, True, True, True),
+                            case=Component(60, False, False, True, True), connected=True, aap_connected=True,
+                            noise_mode=aap.MODE_ANC, allowed_modes=[1, 2, 3, 4], conversational_awareness=True, source="aap")
+        self.state = state
+        self.tray.icon.show()
+        self.tray.update_state(state)
+        self.popup.update_state(state)
+        if self.preview == "settings":
+            from ..core.bluetooth import PairedDevice
+
+            self.engine.devices = [PairedDevice(demo_address, "Luca’s AirPods Pro", 0x004C, 0x2014, True)]
+            QTimer.singleShot(300, self.open_settings)
+        else:
+            self.popup.show_for(120)
+        if self.force_setup:
+            from ..core.bluetooth import PairedDevice
+
+            demo_devices = [PairedDevice(demo_address, "Luca’s AirPods Pro", 0x004C, 0x2014, True),
+                            PairedDevice("00:11:22:33:44:66", "AirPods Max", 0x004C, 0x202D, False)]
+            QTimer.singleShot(300, self.open_wizard)
+            QTimer.singleShot(1200, lambda: self.wizard and self.wizard.on_event("adapter", True))
+            QTimer.singleShot(1300, lambda: self.wizard and self.wizard.on_event("devices", demo_devices))
+        log.info(i18n.t("preview_hint"))
+        signal.signal(signal.SIGINT, lambda *_: self.qt.quit())
+        keepalive = QTimer()
+        keepalive.timeout.connect(lambda: None)
+        keepalive.start(250)
+        return self.qt.exec()
+
     def run(self) -> int:
+        if self.preview:
+            return self.run_preview()
         if not QSystemTrayIcon.isSystemTrayAvailable():
             log.warning(i18n.t("tray_unavailable"))
         self.tray.icon.show()
@@ -220,5 +261,5 @@ class PodsApp:
         return self.qt.exec()
 
 
-def run_gui(settings: Settings, force_setup: bool = False) -> int:
-    return PodsApp(settings, force_setup=force_setup).run()
+def run_gui(settings: Settings, force_setup: bool = False, preview: str | None = None) -> int:
+    return PodsApp(settings, force_setup=force_setup, preview=preview).run()

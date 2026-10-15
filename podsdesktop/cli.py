@@ -36,6 +36,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--version", action="version", version=f"PodsDesktop {__version__}")
     p.add_argument("-v", "--verbose", action="store_true", help="debug logging")
     p.add_argument("--setup", action="store_true", help="start the tray app with the setup assistant")
+    p.add_argument("--preview", nargs="?", const="popup", choices=["popup", "wizard", "settings"],
+                   help="show a window with demo data, no radio (design work, screenshots)")
     g = p.add_argument_group("one-shot commands")
     g.add_argument("--battery", action="store_true", help="print battery levels and exit")
     g.add_argument("--json", action="store_true", help="print the full state as JSON and exit")
@@ -200,9 +202,14 @@ def main(argv: list[str] | None = None) -> int:
     setup_logging(args.verbose, to_file=not oneshot)
     settings = Settings.load()
     if not oneshot:
+        import os
+
+        if sys.platform.startswith("linux") and os.environ.get("WAYLAND_DISPLAY") and os.environ.get("DISPLAY"):
+            # Wayland compositors ignore window positions; through XWayland the popup can sit by the tray.
+            os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
         from .gui.app import run_gui
 
-        return run_gui(settings, force_setup=args.setup)
+        return run_gui(settings, force_setup=args.setup or args.preview == "wizard", preview=args.preview)
     try:
         if args.scan:
             return asyncio.run(_run_scan(args, settings))

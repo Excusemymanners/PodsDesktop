@@ -122,7 +122,12 @@ podsdesktop --mode anc         off | anc | transparency | adaptive (Linux, pods 
 podsdesktop --keys             read and store the device keys over AAP
 podsdesktop --connect / --disconnect
 podsdesktop --setup            tray app + setup assistant
+podsdesktop --preview [popup|wizard|settings]   demo data, no radio (design work)
 ```
+
+The windows follow the system's light or dark scheme (`PODSDESKTOP_THEME=light|dark` forces one).
+On Wayland sessions the app runs through XWayland (`QT_QPA_PLATFORM=xcb`) so the popup can sit next
+to the tray; set `QT_QPA_PLATFORM=wayland` to override.
 
 Settings live in `~/.config/podsdesktop/settings.json` (`%APPDATA%\PodsDesktop` on Windows), the
 log in `~/.local/state/podsdesktop/podsdesktop.log`.

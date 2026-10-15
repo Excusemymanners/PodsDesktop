@@ -43,4 +43,4 @@ Homepage = "https://github.com/Excusemymanners/PodsDesktop"
 include = ["podsdesktop*"]
 
 [tool.setuptools.package-data]
-"podsdesktop.gui.assets" = ["*.png", "*.md"]
+"podsdesktop.gui.assets" = ["*.png", "*.svg", "*.md"]

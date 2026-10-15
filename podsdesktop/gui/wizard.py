@@ -15,31 +15,47 @@ from ..core.system import open_bluetooth_settings
 from . import i18n, images
 from .options import OptionsWidget
 
+TOTAL_STEPS = 5
+
 
 class _Page(QWizardPage):
-    def __init__(self, wizard: "SetupWizard", title_key: str, text_key: str):
+    """A page with its own header (title + step counter + intro), so the look is ours."""
+
+    def __init__(self, wizard: "SetupWizard", step: int, title_key: str, text_key: str):
         super().__init__()
         self.wiz = wizard
-        self.setTitle(i18n.t(title_key))
         self.body = QVBoxLayout(self)
+        self.body.setContentsMargins(28, 24, 28, 16)
+        self.body.setSpacing(12)
+        step_label = QLabel(i18n.t("step", n=step, total=TOTAL_STEPS))
+        step_label.setObjectName("pageStep")
+        title = QLabel(i18n.t(title_key))
+        title.setObjectName("pageTitle")
         intro = QLabel(i18n.t(text_key))
+        intro.setObjectName("pageText")
         intro.setWordWrap(True)
+        self.body.addWidget(step_label)
+        self.body.addWidget(title)
         self.body.addWidget(intro)
+        self.body.addSpacing(6)
 
 
 class WelcomePage(_Page):
     def __init__(self, wizard):
-        super().__init__(wizard, "welcome_title", "welcome_text")
+        super().__init__(wizard, 1, "welcome_title", "welcome_text")
         pic = QLabel()
-        pic.setPixmap(images.model_pixmap(wizard.settings.model_id, 120))
+        pic.setPixmap(images.model_pixmap(wizard.settings.model_id, 150))
         pic.setAlignment(Qt.AlignCenter)
+        self.body.addStretch(1)
         self.body.addWidget(pic)
+        self.body.addStretch(1)
         row = QHBoxLayout()
         row.addWidget(QLabel(i18n.t("language")))
         self.options = OptionsWidget(wizard.settings)
         self.options.hide()
         self.language = self.options.language
         self.language.setParent(self)
+        self.language.setMinimumWidth(180)
         row.addWidget(self.language)
         row.addStretch(1)
         self.body.addLayout(row)
@@ -54,19 +70,22 @@ class WelcomePage(_Page):
 
 class BluetoothPage(_Page):
     def __init__(self, wizard):
-        super().__init__(wizard, "bt_title", "bt_text")
+        super().__init__(wizard, 2, "bt_title", "bt_text")
         self.status = QLabel(i18n.t("bt_unknown"))
-        self.status.setStyleSheet("font-weight: 600;")
-        self.body.addWidget(self.status)
+        self.status.setObjectName("statusWait")
         row = QHBoxLayout()
+        row.addWidget(self.status)
+        row.addStretch(1)
+        self.body.addLayout(row)
+        buttons = QHBoxLayout()
         self.turn_on = QPushButton(i18n.t("bt_turn_on"))
         self.turn_on.clicked.connect(lambda: self.wiz.request("power_on"))
         self.open_settings = QPushButton(i18n.t("bt_open_settings"))
         self.open_settings.clicked.connect(open_bluetooth_settings)
-        row.addWidget(self.turn_on)
-        row.addWidget(self.open_settings)
-        row.addStretch(1)
-        self.body.addLayout(row)
+        buttons.addWidget(self.turn_on)
+        buttons.addWidget(self.open_settings)
+        buttons.addStretch(1)
+        self.body.addLayout(buttons)
         self.body.addStretch(1)
         self.powered: bool | None = None
         self.timer = QTimer(self)
@@ -82,7 +101,9 @@ class BluetoothPage(_Page):
     def set_powered(self, powered: bool) -> None:
         self.powered = powered
         self.status.setText(i18n.t("bt_on" if powered else "bt_off"))
-        self.status.setStyleSheet("font-weight: 600; color: %s;" % ("#34c759" if powered else "#ff3b30"))
+        self.status.setObjectName("statusOk" if powered else "statusBad")
+        self.status.style().unpolish(self.status)
+        self.status.style().polish(self.status)
         self.turn_on.setVisible(not powered)
         self.completeChanged.emit()
 
@@ -96,13 +117,14 @@ class BluetoothPage(_Page):
 
 class DevicePage(_Page):
     def __init__(self, wizard):
-        super().__init__(wizard, "device_title", "device_text")
+        super().__init__(wizard, 3, "device_title", "device_text")
         self.list = QListWidget()
-        self.list.setIconSize(QSize(72, 36))
+        self.list.setIconSize(QSize(96, 48))
+        self.list.setSpacing(2)
         self.list.itemSelectionChanged.connect(self.completeChanged.emit)
         self.body.addWidget(self.list, 1)
         self.empty = QLabel(i18n.t("device_none"))
-        self.empty.setStyleSheet("color: #8e8e93;")
+        self.empty.setObjectName("pageText")
         self.body.addWidget(self.empty)
         row = QHBoxLayout()
         refresh = QPushButton(i18n.t("refresh"))
@@ -159,10 +181,11 @@ class DevicePage(_Page):
 
 class OptionsPage(_Page):
     def __init__(self, wizard):
-        super().__init__(wizard, "options_title", "options_text")
+        super().__init__(wizard, 4, "options_title", "options_text")
         self.options = OptionsWidget(wizard.settings)
         self.options.language.hide()
         self.body.addWidget(self.options)
+        self.body.addStretch(1)
 
     def validatePage(self) -> bool:  # noqa: N802
         self.options.apply()
@@ -171,17 +194,19 @@ class OptionsPage(_Page):
 
 class DonePage(_Page):
     def __init__(self, wizard):
-        super().__init__(wizard, "done_title", "done_text")
+        super().__init__(wizard, 5, "done_title", "done_text")
         if sys.platform.startswith("linux"):
             hint = QLabel(i18n.t("done_keys_hint"))
+            hint.setObjectName("pageText")
             hint.setWordWrap(True)
             self.body.addWidget(hint)
+        self.body.addStretch(1)
         self.pic = QLabel()
         self.pic.setAlignment(Qt.AlignCenter)
         self.body.addWidget(self.pic)
         self.status = QLabel("")
+        self.status.setObjectName("liveStatus")
         self.status.setAlignment(Qt.AlignCenter)
-        self.status.setStyleSheet("font-size: 14px; font-weight: 600;")
         self.body.addWidget(self.status)
         self.body.addStretch(1)
 
@@ -191,7 +216,7 @@ class DonePage(_Page):
     def set_state(self, state: DeviceState | None) -> None:
         if state is None:
             return
-        self.pic.setPixmap(images.model_pixmap(state.model_id, 110))
+        self.pic.setPixmap(images.model_pixmap(state.model_id, 120))
         text = state.display_name
         if state.has_battery:
             text += "\n" + state.levels_text()
@@ -211,11 +236,17 @@ class SetupWizard(QWizard):
         super().__init__()
         self.settings = settings
         self.state = state
+        self.setObjectName("podsWizard")
         self.setWindowTitle(i18n.t("wizard_title"))
         self.setWindowIcon(images.app_icon())
         self.setWizardStyle(QWizard.ModernStyle)
         self.setOption(QWizard.NoBackButtonOnStartPage, True)
-        self.setMinimumSize(560, 480)
+        self.setOption(QWizard.NoCancelButtonOnLastPage, True)
+        self.setButtonText(QWizard.NextButton, i18n.t("next") + "  ›")
+        self.setButtonText(QWizard.BackButton, "‹  " + i18n.t("back"))
+        self.setButtonText(QWizard.FinishButton, i18n.t("finish"))
+        self.setButtonText(QWizard.CancelButton, i18n.t("cancel"))
+        self.setMinimumSize(600, 540)
         self.page_welcome = WelcomePage(self)
         self.page_bluetooth = BluetoothPage(self)
         self.page_device = DevicePage(self)

@@ -14,9 +14,12 @@ class SettingsDialog(QDialog):
     def __init__(self, settings: Settings, devices: list[PairedDevice], parent=None):
         super().__init__(parent)
         self.settings = settings
-        self.setWindowTitle(i18n.t("settings_dialog"))
+        self.setObjectName("podsSettings")
+        self.setWindowTitle(i18n.t("settings_dialog").rstrip("…"))
         self.setWindowIcon(images.app_icon())
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(22, 18, 22, 16)
+        layout.setSpacing(12)
         box = QGroupBox(i18n.t("device"))
         form = QFormLayout(box)
         self.device = QComboBox()
@@ -35,7 +38,7 @@ class SettingsDialog(QDialog):
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
-        self.setMinimumWidth(460)
+        self.setMinimumWidth(500)
 
     def selected_address(self) -> str | None:
         return self.device.currentData()

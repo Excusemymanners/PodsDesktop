@@ -46,6 +46,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "status_now": "Status now", "rssi_min": "Minimum signal strength for advertisements (dBm)",
         "popup_seconds": "Popup duration (seconds)", "run_setup": "Run the setup assistant",
         "general": "General", "behaviour": "Behaviour", "advanced": "Advanced",
+        "mode_anc_short": "ANC", "mode_transparency_short": "Transp.",
+        "next": "Next", "back": "Back", "finish": "Finish", "cancel": "Cancel", "step": "Step {n} of {total}",
+        "preview_hint": "Preview mode: demo data, nothing is scanned.",
     },
     "ro": {
         "left": "Stânga", "right": "Dreapta", "case": "Carcasă", "battery": "Baterie",
@@ -87,6 +90,9 @@ STRINGS: dict[str, dict[str, str]] = {
         "status_now": "Starea acum", "rssi_min": "Semnal minim acceptat pentru anunțuri (dBm)",
         "popup_seconds": "Durata ferestrei (secunde)", "run_setup": "Pornește asistentul de configurare",
         "general": "General", "behaviour": "Comportament", "advanced": "Avansat",
+        "mode_anc_short": "ANC", "mode_transparency_short": "Transp.",
+        "next": "Înainte", "back": "Înapoi", "finish": "Gata", "cancel": "Renunță", "step": "Pasul {n} din {total}",
+        "preview_hint": "Mod previzualizare: date demonstrative, nu se scanează nimic.",
     },
 }
 

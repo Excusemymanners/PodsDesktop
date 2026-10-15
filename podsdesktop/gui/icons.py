@@ -6,67 +6,67 @@ from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QIcon, QPainter, QPainterPath, QPen, QPixmap
 
 from ..core.state import DeviceState
-
-GREEN = QColor("#34c759")
-YELLOW = QColor("#ffcc00")
-RED = QColor("#ff3b30")
-GRAY = QColor("#8e8e93")
+from . import theme
 
 
-def level_color(level: int | None) -> QColor:
-    if level is None:
-        return GRAY
-    if level <= 20:
-        return RED
-    if level <= 40:
-        return YELLOW
-    return GREEN
+def draw_bolt(painter: QPainter, cx: float, cy: float, s: float, fill: QColor, outline: QColor | None = None) -> None:
+    bolt = QPainterPath()
+    bolt.moveTo(cx + s * 0.15, cy - s)
+    bolt.lineTo(cx - s * 0.45, cy + s * 0.1)
+    bolt.lineTo(cx - s * 0.02, cy + s * 0.1)
+    bolt.lineTo(cx - s * 0.15, cy + s)
+    bolt.lineTo(cx + s * 0.45, cy - s * 0.1)
+    bolt.lineTo(cx + s * 0.02, cy - s * 0.1)
+    bolt.closeSubpath()
+    painter.save()
+    painter.setPen(QPen(outline, max(1.0, s * 0.12)) if outline else Qt.NoPen)
+    painter.setBrush(fill)
+    painter.drawPath(bolt)
+    painter.restore()
 
 
-def draw_battery(painter: QPainter, rect: QRectF, level: int | None, charging: bool, fg: QColor, vertical: bool = False) -> None:
+def draw_battery(painter: QPainter, rect: QRectF, level: int | None, charging: bool, fg: QColor,
+                 vertical: bool = False, pal: theme.Palette | None = None, bolt: bool = True) -> None:
+    """A rounded battery outline with a colour-coded fill; horizontal by default."""
+    pal = pal or theme.palette()
     painter.save()
     painter.setRenderHint(QPainter.Antialiasing)
-    stroke = max(1.5, rect.height() * 0.09 if not vertical else rect.width() * 0.09)
+    thickness = rect.width() if vertical else rect.height()
+    stroke = max(1.2, thickness * 0.09)
     painter.setPen(QPen(fg, stroke))
     painter.setBrush(Qt.NoBrush)
     if vertical:
         body = QRectF(rect.left(), rect.top() + rect.height() * 0.08, rect.width(), rect.height() * 0.92)
         nub = QRectF(rect.left() + rect.width() * 0.3, rect.top(), rect.width() * 0.4, rect.height() * 0.08)
     else:
-        body = QRectF(rect.left(), rect.top(), rect.width() * 0.92, rect.height())
-        nub = QRectF(body.right(), rect.top() + rect.height() * 0.3, rect.width() * 0.08, rect.height() * 0.4)
-    radius = min(body.width(), body.height()) * 0.22
+        body = QRectF(rect.left(), rect.top(), rect.width() * 0.93, rect.height())
+        nub = QRectF(body.right() + stroke * 0.6, rect.top() + rect.height() * 0.3, rect.width() * 0.05, rect.height() * 0.4)
+    radius = min(body.width(), body.height()) * 0.26
     painter.drawRoundedRect(body, radius, radius)
     painter.setPen(Qt.NoPen)
     painter.setBrush(fg)
-    painter.drawRoundedRect(nub, 1.5, 1.5)
-    inner = body.adjusted(stroke * 1.6, stroke * 1.6, -stroke * 1.6, -stroke * 1.6)
+    painter.drawRoundedRect(nub, nub.width() * 0.4, nub.width() * 0.4)
+    inner = body.adjusted(stroke * 1.7, stroke * 1.7, -stroke * 1.7, -stroke * 1.7)
     if level is not None:
         fraction = max(0.0, min(1.0, level / 100))
-        painter.setBrush(level_color(level))
+        painter.setBrush(theme.level_color(pal, level))
+        r = min(inner.width(), inner.height()) * 0.3
         if vertical:
-            h = inner.height() * fraction
-            painter.drawRoundedRect(QRectF(inner.left(), inner.bottom() - h, inner.width(), h), 2, 2)
+            h = max(inner.height() * fraction, r * 2 if fraction > 0 else 0)
+            painter.drawRoundedRect(QRectF(inner.left(), inner.bottom() - h, inner.width(), h), r, r)
         else:
-            painter.drawRoundedRect(QRectF(inner.left(), inner.top(), inner.width() * fraction, inner.height()), 2, 2)
-    if charging:
-        bolt = QPainterPath()
-        cx, cy = body.center().x(), body.center().y()
-        s = min(body.width(), body.height()) * 0.42
-        bolt.moveTo(cx + s * 0.15, cy - s)
-        bolt.lineTo(cx - s * 0.45, cy + s * 0.1)
-        bolt.lineTo(cx - s * 0.02, cy + s * 0.1)
-        bolt.lineTo(cx - s * 0.15, cy + s)
-        bolt.lineTo(cx + s * 0.45, cy - s * 0.1)
-        bolt.lineTo(cx + s * 0.02, cy - s * 0.1)
-        bolt.closeSubpath()
-        painter.setPen(QPen(QColor(0, 0, 0, 160), stroke * 0.6))
-        painter.setBrush(QColor("#ffffff"))
-        painter.drawPath(bolt)
+            w = max(inner.width() * fraction, r * 2 if fraction > 0 else 0)
+            painter.drawRoundedRect(QRectF(inner.left(), inner.top(), w, inner.height()), r, r)
+    if charging and bolt:
+        draw_bolt(painter, body.center().x(), body.center().y(), min(body.width(), body.height()) * 0.42,
+                  QColor("#ffffff"), QColor(0, 0, 0, 150))
     painter.restore()
 
 
-def tray_icon(state: DeviceState | None, dark: bool = True, show_percent: bool = True, size: int = 64) -> QIcon:
+def tray_icon(state: DeviceState | None, dark: bool | None = None, show_percent: bool = True, size: int = 64) -> QIcon:
+    """Battery pill with the lowest pod level as a big number; dims when nothing is known."""
+    dark = theme.is_dark() if dark is None else dark
+    pal = theme.DARK if dark else theme.LIGHT
     pix = QPixmap(size, size)
     pix.fill(Qt.transparent)
     painter = QPainter(pix)
@@ -80,19 +80,19 @@ def tray_icon(state: DeviceState | None, dark: bool = True, show_percent: bool =
             level = state.case.level
         charging = any(c.charging for c in (state.left, state.right))
     elif state is not None and not state.connected:
-        fg.setAlpha(140)
+        fg.setAlpha(150)
     if show_percent and level is not None:
-        draw_battery(painter, QRectF(size * 0.08, size * 0.06, size * 0.84, size * 0.44), level, charging, fg)
+        draw_battery(painter, QRectF(size * 0.07, size * 0.05, size * 0.86, size * 0.42), level, charging, fg, pal=pal)
         font = QFont()
         font.setBold(True)
-        font.setPixelSize(int(size * 0.42))
+        font.setPixelSize(int(size * 0.46))
         painter.setFont(font)
         painter.setPen(fg)
-        painter.drawText(QRectF(0, size * 0.5, size, size * 0.5), Qt.AlignCenter, f"{level}")
+        painter.drawText(QRectF(0, size * 0.47, size, size * 0.53), Qt.AlignCenter, f"{level}")
     else:
-        draw_battery(painter, QRectF(size * 0.08, size * 0.26, size * 0.84, size * 0.48), level, charging, fg)
+        draw_battery(painter, QRectF(size * 0.07, size * 0.27, size * 0.86, size * 0.46), level, charging, fg, pal=pal)
         if level is None:
-            painter.setPen(QPen(fg, size * 0.05))
+            painter.setPen(QPen(fg, size * 0.05, Qt.SolidLine, Qt.RoundCap))
             painter.drawLine(int(size * 0.3), int(size * 0.5), int(size * 0.62), int(size * 0.5))
     painter.end()
     return QIcon(pix)
