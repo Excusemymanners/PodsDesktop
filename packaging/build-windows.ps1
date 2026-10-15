@@ -11,10 +11,11 @@ pyinstaller --noconfirm --clean --onefile --windowed --name PodsDesktop `
     --hidden-import podsdesktop.core.bluetooth_windows --hidden-import podsdesktop.gui.app `
     podsdesktop\__main__.py
 Write-Host "built: dist\PodsDesktop.exe"
-$iscc = Get-Command iscc -ErrorAction SilentlyContinue
-if (-not $iscc) { $iscc = Get-Item "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" -ErrorAction SilentlyContinue }
-if ($iscc) {
-    & $iscc.FullName packaging\PodsDesktop.iss
+$isccCmd = Get-Command iscc -ErrorAction SilentlyContinue
+$isccPath = if ($isccCmd) { $isccCmd.Source } else { "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" }
+if (Test-Path $isccPath) {
+    & $isccPath "packaging\PodsDesktop.iss"
+    if ($LASTEXITCODE -ne 0) { throw "Inno Setup failed with exit code $LASTEXITCODE" }
     Write-Host "built: dist\PodsDesktop-Setup.exe"
 } else {
     Write-Host "Inno Setup not found; only the portable exe was built."
