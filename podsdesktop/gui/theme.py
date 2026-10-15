@@ -68,7 +68,10 @@ def stylesheet(pal: Palette) -> str:
     inner = lambda sel: ", ".join(f"{scope} {sel}" for scope in ("#podsWizard", "#podsSettings"))  # noqa: E731
     return f"""
 {scopes} {{ background: {pal.bg}; }}
+{inner("QWizardPage")} {{ background: {pal.bg}; }}
 {inner("QWidget")} {{ color: {pal.text}; font-size: 13px; }}
+{inner("QLineEdit")} {{ background: {pal.card}; color: {pal.text}; border: 1px solid {pal.border}; border-radius: 8px; padding: 5px 10px; selection-background-color: {pal.accent}; }}
+{inner("QLineEdit:focus")} {{ border-color: {pal.accent}; }}
 {inner("QLabel#pageTitle")} {{ font-size: 22px; font-weight: 700; padding-bottom: 2px; }}
 {inner("QLabel#pageStep")} {{ color: {pal.dim}; font-size: 12px; }}
 {inner("QLabel#pageText")} {{ color: {pal.dim}; font-size: 13px; line-height: 150%; }}
@@ -88,7 +91,8 @@ def stylesheet(pal: Palette) -> str:
 {inner("QCheckBox")} {{ spacing: 10px; padding: 4px 0; }}
 {inner("QCheckBox::indicator")} {{ width: 18px; height: 18px; border-radius: 5px; border: 1px solid {pal.border}; background: {pal.card}; }}
 {inner("QCheckBox::indicator:checked")} {{ background: {pal.accent}; border-color: {pal.accent}; image: url("{check}"); }}
-{inner("QComboBox, QSpinBox")} {{ background: {pal.card}; border: 1px solid {pal.border}; border-radius: 8px; padding: 5px 10px; min-height: 20px; }}
+{inner("QComboBox, QSpinBox")} {{ background: {pal.card}; color: {pal.text}; border: 1px solid {pal.border}; border-radius: 8px; padding: 5px 10px; min-height: 20px; }}
+{inner("QSpinBox::up-button, QSpinBox::down-button")} {{ width: 18px; border: 0; background: transparent; }}
 {inner("QComboBox::drop-down")} {{ border: 0; width: 24px; }}
 {inner("QComboBox QAbstractItemView")} {{ background: {pal.card}; color: {pal.text}; selection-background-color: {pal.accent}; selection-color: white; border: 1px solid {pal.border}; }}
 {inner("QGroupBox")} {{ border: 1px solid {pal.border}; border-radius: 12px; margin-top: 14px; padding: 14px 10px 8px 10px; background: {pal.card}; }}

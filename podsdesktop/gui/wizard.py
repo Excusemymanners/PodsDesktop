@@ -24,6 +24,7 @@ class _Page(QWizardPage):
     def __init__(self, wizard: "SetupWizard", step: int, title_key: str, text_key: str):
         super().__init__()
         self.wiz = wizard
+        self.setAttribute(Qt.WA_StyledBackground, True)  # plain QWidget pages ignore the stylesheet background otherwise
         self.body = QVBoxLayout(self)
         self.body.setContentsMargins(28, 24, 28, 16)
         self.body.setSpacing(12)

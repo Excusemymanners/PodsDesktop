@@ -49,6 +49,10 @@ STRINGS: dict[str, dict[str, str]] = {
         "mode_anc_short": "ANC", "mode_transparency_short": "Transp.",
         "next": "Next", "back": "Back", "finish": "Finish", "cancel": "Cancel", "step": "Step {n} of {total}",
         "preview_hint": "Preview mode: demo data, nothing is scanned.",
+        "keys": "Device keys", "keys_text": "Read over AAP on Linux (tray menu or `podsdesktop --keys`). On Windows paste them here to get exact identification and 1 % battery levels from the advertisements.",
+        "keys_known": "Keys known: your AirPods are identified exactly.", "keys_unknown": "No keys yet.",
+        "keys_copy": "Copy keys", "keys_copied": "Keys copied to the clipboard.", "keys_paste": "Paste keys", "keys_invalid": "Keys must be two 32-character hex strings (IRK and ENC).",
+        "irk": "IRK", "enc_key": "ENC key",
     },
     "ro": {
         "left": "Stânga", "right": "Dreapta", "case": "Carcasă", "battery": "Baterie",
@@ -93,6 +97,10 @@ STRINGS: dict[str, dict[str, str]] = {
         "mode_anc_short": "ANC", "mode_transparency_short": "Transp.",
         "next": "Înainte", "back": "Înapoi", "finish": "Gata", "cancel": "Renunță", "step": "Pasul {n} din {total}",
         "preview_hint": "Mod previzualizare: date demonstrative, nu se scanează nimic.",
+        "keys": "Cheile dispozitivului", "keys_text": "Se citesc prin AAP pe Linux (meniul din tray sau `podsdesktop --keys`). Pe Windows le lipești aici ca să ai identificare exactă și procente la 1% din anunțuri.",
+        "keys_known": "Chei cunoscute: AirPods-urile tale sunt identificate exact.", "keys_unknown": "Încă fără chei.",
+        "keys_copy": "Copiază cheile", "keys_copied": "Cheile au fost copiate.", "keys_paste": "Lipește cheile", "keys_invalid": "Cheile trebuie să fie două șiruri hex de 32 de caractere (IRK și ENC).",
+        "irk": "IRK", "enc_key": "Cheia ENC",
     },
 }
 

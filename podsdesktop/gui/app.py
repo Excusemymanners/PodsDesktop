@@ -27,10 +27,12 @@ log = logging.getLogger(__name__)
 
 
 class PodsApp:
-    def __init__(self, settings: Settings, force_setup: bool = False, preview: str | None = None):
+    def __init__(self, settings: Settings, force_setup: bool = False, preview: str | None = None,
+                 snapshot: str | None = None):
         self.settings = settings
         self.force_setup = force_setup
         self.preview = preview
+        self.snapshot = snapshot
         i18n.set_language(settings.language)
         self.qt = QApplication.instance() or QApplication(sys.argv)
         self.qt.setApplicationName("PodsDesktop")
@@ -187,11 +189,18 @@ class PodsApp:
     def open_settings(self) -> None:
         i18n.set_language(self.settings.language)
         dialog = SettingsDialog(self.settings, self.engine.devices)
+        self._settings_dialog = dialog
         dialog.run_setup.clicked.connect(lambda: (dialog.reject(), self.open_wizard()))
-        if dialog.exec() != QDialog.Accepted:
+        accepted = dialog.exec() == QDialog.Accepted
+        self._settings_dialog = None
+        if not accepted:
             return
         old_language = i18n.current_language()
         dialog.apply()
+        if dialog.keys_changed:
+            self.settings.save()
+            if self.state:
+                self.tray.update_state(self.state)
         address = dialog.selected_address()
         if address != self.settings.device_address:
             self.bridge.call(self.engine.bind(address))
@@ -237,6 +246,30 @@ class PodsApp:
             QTimer.singleShot(1200, lambda: self.wizard and self.wizard.on_event("adapter", True))
             QTimer.singleShot(1300, lambda: self.wizard and self.wizard.on_event("devices", demo_devices))
         log.info(i18n.t("preview_hint"))
+
+        def report_geometry() -> None:
+            screen = self.qt.primaryScreen()
+            dpr = screen.devicePixelRatio() if screen else 1.0
+            for name, widget in (("popup", self.popup), ("wizard", self.wizard), ("settings", getattr(self, "_settings_dialog", None))):
+                if widget is not None and widget.isVisible():
+                    g = widget.frameGeometry()
+                    log.info("preview geometry %s: x=%d y=%d w=%d h=%d dpr=%.2f", name, g.x(), g.y(), g.width(), g.height(), dpr)
+
+        QTimer.singleShot(2500, report_geometry)
+
+        def take_snapshot() -> None:
+            target = {"wizard": self.wizard, "settings": getattr(self, "_settings_dialog", None)}.get(self.preview, self.popup)
+            if target is None:
+                log.warning("snapshot: window not ready")
+            else:
+                target.grab().save(self.snapshot)
+                log.info("snapshot written to %s", self.snapshot)
+            if getattr(self, "_settings_dialog", None) is not None:
+                self._settings_dialog.reject()
+            self.qt.quit()
+
+        if self.snapshot:
+            QTimer.singleShot(1800, take_snapshot)
         signal.signal(signal.SIGINT, lambda *_: self.qt.quit())
         keepalive = QTimer()
         keepalive.timeout.connect(lambda: None)
@@ -261,5 +294,5 @@ class PodsApp:
         return self.qt.exec()
 
 
-def run_gui(settings: Settings, force_setup: bool = False, preview: str | None = None) -> int:
-    return PodsApp(settings, force_setup=force_setup, preview=preview).run()
+def run_gui(settings: Settings, force_setup: bool = False, preview: str | None = None, snapshot: str | None = None) -> int:
+    return PodsApp(settings, force_setup=force_setup, preview=preview, snapshot=snapshot).run()

@@ -11,6 +11,15 @@ module docstrings; the reasoning is below.
 
 *(Română mai jos.)*
 
+<p align="center">
+  <img src="docs/popup.png" width="300" alt="Battery window, dark">
+  <img src="docs/popup-light.png" width="300" alt="Battery window, light">
+</p>
+<p align="center">
+  <img src="docs/wizard.png" width="300" alt="Setup assistant">
+  <img src="docs/settings.png" width="260" alt="Settings">
+</p>
+
 ## What it does
 
 | Feature | Linux | Windows |
@@ -19,7 +28,8 @@ module docstrings; the reasoning is below.
 | Battery of left / right pod and case in the tray + popup, with a picture of the model | ✔ | ✔ |
 | Popup when the case is opened near the computer | ✔ | ✔ |
 | Pause media when a pod is removed, resume when it is back | ✔ (MPRIS, every player) | ✔ (system media session, media-key fallback) |
-| Exact 1 % battery levels, instant ear detection | ✔ (AAP session) | with imported keys |
+| Exact 1 % battery levels, instant ear detection | ✔ (AAP session) | 1 % from advertisements with imported keys |
+| Device keys: read over AAP, copy/paste between computers | ✔ read + copy | paste |
 | Noise control: Off / ANC / Transparency / Adaptive, conversational awareness | ✔ | – |
 | Recognise *your* AirPods among other pairs in the room | ✔ exact (IRK) | ✔ exact once keys are imported, heuristic otherwise |
 | Low-battery notification, connect/disconnect from the tray, autostart | ✔ | partial (no connect) |
@@ -64,6 +74,8 @@ the freshest usable data per component. The merging rules are unit-tested with s
 
 ## Install and run
 
+Step-by-step instructions with troubleshooting: **[INSTALL.md](INSTALL.md)** (Romanian and English).
+
 Ready-made builds (from the GitHub Actions workflow, or a release): `PodsDesktop-Setup.exe`
 (Windows installer, adds a Start-menu entry and optional autostart), `PodsDesktop.exe` (portable)
 and `PodsDesktop-linux-x86_64.bin` (single-file Linux binary). On first start the setup assistant
@@ -101,6 +113,16 @@ py -3.12 -m venv .venv ; .\.venv\Scripts\Activate.ps1
 pip install -e ".[gui,windows]"
 python -m podsdesktop
 ```
+
+**Why some features are Linux-only.** Noise control, live 1 % battery and instant ear events travel
+over the AAP channel (L2CAP PSM 0x1001). Linux lets any user open that channel; the Microsoft
+Bluetooth stack only exposes RFCOMM to user programs, so on Windows AAP needs a kernel driver, which
+is what the commercial [MagicPods](https://magicpods.app/magicaap/) ships (unsigned official build
+in test mode, or a community-signed one) and what the open-source
+[WinPods](https://github.com/changcheng967/WinPods) attempts with an unverified KMDF driver.
+PodsDesktop does not ship a driver. What Windows gets instead: everything from the advertisements,
+and, once the device keys read on Linux are pasted in *Settings → Device keys*, exact identification
+and 1 % levels from the encrypted advertisement payload.
 
 `packaging\build-windows.ps1` builds `dist\PodsDesktop.exe` with PyInstaller and, when Inno Setup
 is installed, `dist\PodsDesktop-Setup.exe`. The GitHub Actions workflow does the same on every
