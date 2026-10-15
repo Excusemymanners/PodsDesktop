@@ -1,5 +1,5 @@
 ; Inno Setup script – builds dist\PodsDesktop-Setup.exe from dist\PodsDesktop.exe
-#define AppVersion "0.1.1"
+#define AppVersion "0.1.2"
 [Setup]
 AppId={{7E1C2B6A-5C0E-4D8B-9A6F-3B2A1F0C9D11}
 AppName=PodsDesktop
