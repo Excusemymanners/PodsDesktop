@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=PodsDesktop
+Comment=AirPods battery, ear detection and noise control
+Exec=podsdesktop
+Icon=audio-headphones
+Terminal=false
+Categories=Utility;Audio;
+StartupNotify=false
