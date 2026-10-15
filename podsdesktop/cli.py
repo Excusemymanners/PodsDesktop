@@ -35,6 +35,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="podsdesktop", description="AirPods battery, ear detection and noise control for Linux and Windows.")
     p.add_argument("--version", action="version", version=f"PodsDesktop {__version__}")
     p.add_argument("-v", "--verbose", action="store_true", help="debug logging")
+    p.add_argument("--setup", action="store_true", help="start the tray app with the setup assistant")
     g = p.add_argument_group("one-shot commands")
     g.add_argument("--battery", action="store_true", help="print battery levels and exit")
     g.add_argument("--json", action="store_true", help="print the full state as JSON and exit")
@@ -201,7 +202,7 @@ def main(argv: list[str] | None = None) -> int:
     if not oneshot:
         from .gui.app import run_gui
 
-        return run_gui(settings)
+        return run_gui(settings, force_setup=args.setup)
     try:
         if args.scan:
             return asyncio.run(_run_scan(args, settings))

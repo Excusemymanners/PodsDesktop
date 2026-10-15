@@ -7,7 +7,7 @@ from PySide6.QtGui import QColor, QFont, QGuiApplication, QPainter, QPen
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from ..core.state import Component, DeviceState
-from . import i18n
+from . import i18n, images
 from .icons import draw_battery
 
 BG = QColor(28, 28, 30, 235)
@@ -20,7 +20,7 @@ class ComponentView(QWidget):
         super().__init__(parent)
         self.label_key = label_key
         self.component = Component()
-        self.setMinimumSize(96, 120)
+        self.setMinimumSize(96, 112)
 
     def set_component(self, component: Component) -> None:
         self.component = component
@@ -34,13 +34,13 @@ class ComponentView(QWidget):
         fg = QColor(FG)
         if not comp.available:
             fg.setAlpha(110)
-        draw_battery(p, QRectF(w * 0.32, 8, w * 0.36, h * 0.46), comp.level if comp.available else None, comp.charging, fg, vertical=True)
+        draw_battery(p, QRectF(w * 0.34, 6, w * 0.32, h * 0.46), comp.level if comp.available else None, comp.charging, fg, vertical=True)
         font = QFont()
         font.setPixelSize(20)
         font.setBold(True)
         p.setFont(font)
         p.setPen(fg)
-        p.drawText(QRectF(0, h * 0.54, w, 28), Qt.AlignCenter, comp.text(i18n.t("unknown")).replace(" ⚡", ""))
+        p.drawText(QRectF(0, h * 0.52, w, 28), Qt.AlignCenter, comp.text(i18n.t("unknown")).replace(" ⚡", ""))
         font.setPixelSize(12)
         font.setBold(False)
         p.setFont(font)
@@ -50,7 +50,7 @@ class ComponentView(QWidget):
             label += " · " + i18n.t("in_ear")
         elif comp.charging:
             label += " · ⚡"
-        p.drawText(QRectF(0, h * 0.54 + 30, w, 20), Qt.AlignCenter, label)
+        p.drawText(QRectF(0, h * 0.52 + 30, w, 20), Qt.AlignCenter, label)
         p.end()
 
 
@@ -64,9 +64,14 @@ class BatteryPopup(QWidget):
         self._timer.setSingleShot(True)
         self._timer.timeout.connect(self.hide)
         self.title = QLabel("AirPods")
+        self.title.setAlignment(Qt.AlignCenter)
         self.title.setStyleSheet("color: #f2f2f7; font-size: 15px; font-weight: 600;")
         self.subtitle = QLabel("")
+        self.subtitle.setAlignment(Qt.AlignCenter)
         self.subtitle.setStyleSheet("color: #aeaeb2; font-size: 11px;")
+        self.image = QLabel()
+        self.image.setAlignment(Qt.AlignCenter)
+        self.image.setPixmap(images.model_pixmap(None, 96))
         self.views = {"left": ComponentView("left"), "right": ComponentView("right"), "case": ComponentView("case")}
         row = QHBoxLayout()
         row.setSpacing(4)
@@ -76,11 +81,13 @@ class BatteryPopup(QWidget):
         layout.setContentsMargins(18, 14, 18, 12)
         layout.addWidget(self.title)
         layout.addWidget(self.subtitle)
+        layout.addWidget(self.image)
         layout.addLayout(row)
-        self.resize(340, 200)
+        self.resize(360, 300)
 
     def update_state(self, state: DeviceState) -> None:
         self.title.setText(state.display_name)
+        self.image.setPixmap(images.model_pixmap(state.model_id, 96))
         if state.is_headset:
             self.views["left"].label_key = "battery"
             self.views["right"].hide()

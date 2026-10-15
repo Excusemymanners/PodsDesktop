@@ -26,3 +26,6 @@ class NullBackend:
 
     async def adapter_powered(self) -> bool:
         return True
+
+    async def power_on(self) -> None:
+        raise RuntimeError("turning Bluetooth on is not supported on this platform")

@@ -1,0 +1,74 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - run: python -m unittest discover -s tests -v
+
+  linux:
+    needs: test
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: sudo apt-get update && sudo apt-get install -y libegl1 libxkbcommon0 libgl1
+      - run: pip install -e ".[gui]" pyinstaller
+      - run: ./packaging/build-linux.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PodsDesktop-linux-x86_64
+          path: dist/PodsDesktop
+
+  windows:
+    needs: test
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[gui,windows]" pyinstaller
+      - name: Smoke test the Windows backend without a radio
+        run: python -c "import asyncio, podsdesktop.core.bluetooth_windows as b, podsdesktop.core.media as m; print(asyncio.run(b.WinRTBackend().paired_devices())); print(asyncio.run(m.WindowsMediaController().pause_playing()))"
+      - run: python -m unittest discover -s tests -v
+      - run: .\packaging\build-windows.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PodsDesktop-windows
+          path: |
+            dist/PodsDesktop.exe
+            dist/PodsDesktop-Setup.exe
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, windows]
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - run: |
+          mv artifacts/PodsDesktop-linux-x86_64/PodsDesktop artifacts/PodsDesktop-linux-x86_64.bin
+          ls -R artifacts
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/PodsDesktop-linux-x86_64.bin
+            artifacts/PodsDesktop-windows/PodsDesktop.exe
+            artifacts/PodsDesktop-windows/PodsDesktop-Setup.exe

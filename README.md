@@ -15,7 +15,8 @@ module docstrings; the reasoning is below.
 
 | Feature | Linux | Windows |
 |---|---|---|
-| Battery of left / right pod and case in the tray + popup | ✔ | ✔ |
+| Setup assistant on first start (Bluetooth check, pick the AirPods, options) | ✔ | ✔ |
+| Battery of left / right pod and case in the tray + popup, with a picture of the model | ✔ | ✔ |
 | Popup when the case is opened near the computer | ✔ | ✔ |
 | Pause media when a pod is removed, resume when it is back | ✔ (MPRIS, every player) | ✔ (system media session, media-key fallback) |
 | Exact 1 % battery levels, instant ear detection | ✔ (AAP session) | with imported keys |
@@ -63,14 +64,23 @@ the freshest usable data per component. The merging rules are unit-tested with s
 
 ## Install and run
 
+Ready-made builds (from the GitHub Actions workflow, or a release): `PodsDesktop-Setup.exe`
+(Windows installer, adds a Start-menu entry and optional autostart), `PodsDesktop.exe` (portable)
+and `PodsDesktop-linux-x86_64.bin` (single-file Linux binary). On first start the setup assistant
+checks Bluetooth, lets you pick the AirPods and set the options; it can be run again from the tray
+menu or with `podsdesktop --setup`.
+
 ### Linux (Fedora, Ubuntu, Arch… with BlueZ ≥ 5.50)
 
 ```bash
 git clone https://github.com/Excusemymanners/PodsDesktop.git
 cd PodsDesktop
 ./packaging/install-linux.sh      # venv in ~/.local/share/podsdesktop, command in ~/.local/bin
-podsdesktop                       # tray application
+podsdesktop                       # tray application (the assistant opens the first time)
 ```
+
+Or build the single-file binary yourself: `.venv/bin/pip install -e ".[gui]" pyinstaller &&
+./packaging/build-linux.sh` → `dist/PodsDesktop`.
 
 Development setup instead:
 
@@ -92,9 +102,12 @@ pip install -e ".[gui,windows]"
 python -m podsdesktop
 ```
 
-`packaging\build-windows.ps1` builds a single `PodsDesktop.exe` with PyInstaller. The Windows
-backend (WinRT device enumeration, media session control) is written to the same API as the
-Linux one but has not yet been run on real hardware – reports welcome.
+`packaging\build-windows.ps1` builds `dist\PodsDesktop.exe` with PyInstaller and, when Inno Setup
+is installed, `dist\PodsDesktop-Setup.exe`. The GitHub Actions workflow does the same on every
+push and smoke-tests the WinRT backend on a Windows runner. The Windows backend (WinRT device
+enumeration with a PnP fallback for the product id, media session control, radio power) follows
+the same API as the Linux one; it has been checked against the WinRT type stubs but not yet run
+with real AirPods – reports welcome.
 
 ### CLI
 
@@ -108,6 +121,7 @@ podsdesktop --bind CC:08:FA:BC:3F:2F
 podsdesktop --mode anc         off | anc | transparency | adaptive (Linux, pods connected)
 podsdesktop --keys             read and store the device keys over AAP
 podsdesktop --connect / --disconnect
+podsdesktop --setup            tray app + setup assistant
 ```
 
 Settings live in `~/.config/podsdesktop/settings.json` (`%APPDATA%\PodsDesktop` on Windows), the
@@ -121,15 +135,17 @@ podsdesktop/protocol/   proximity.py (BLE packet), aap.py (AAP packets), aes.py 
 podsdesktop/core/       engine.py (orchestration), tracker.py (identity + side merging),
                         aap_client.py (L2CAP session), ble_scanner.py (bleak), bluetooth_*.py
                         (BlueZ / WinRT), media.py (MPRIS / GSMTC), settings.py, state.py
-podsdesktop/gui/        PySide6 tray, popup, icons, i18n (ro/en), engine thread bridge
+podsdesktop/gui/        PySide6 tray, popup, setup assistant, settings dialog, icons, images,
+                        i18n (ro/en), engine thread bridge
 tests/                  unit tests for the protocol, tracker and engine (no radio needed)
-packaging/              Linux installer, .desktop file, Windows PyInstaller script
+packaging/              Linux installer and PyInstaller build, .desktop file, Windows PyInstaller
+                        script + Inno Setup installer, icon generator; .github/workflows builds all
 ```
 
 ## Credits
 
 * [AirPodsDesktop](https://github.com/SpriteOvO/AirPodsDesktop) (GPL-3.0) – the starting point,
-  the advertisement layout and the merging rules.
+  the advertisement layout, the merging rules and the product renders in `gui/assets`.
 * [LibrePods](https://github.com/librepods-org/librepods) – AAP documentation, device keys,
   payload decryption.
 * [zeffd/airpods](https://github.com/zeffd/airpods) (MIT) – proof that AAP needs nothing but a
@@ -162,8 +178,13 @@ instantanee și comenzi, plus cheile dispozitivului: cu ele adresa aleatoare dev
 (doar perechea ta e acceptată) și coada criptată a anunțului se decriptează în procente exacte.
 Tabelul de modele e complet (inclusiv AirPods Max 2), iar modelele necunoscute nu sunt aruncate.
 
-**Instalare pe Linux:** `./packaging/install-linux.sh`, apoi `podsdesktop`. Pentru scripturi:
-`podsdesktop --battery`, `--json`, `--watch`. Setările sunt în `~/.config/podsdesktop/settings.json`.
+**Instalare.** Pachete gata făcute din GitHub Actions / Releases: `PodsDesktop-Setup.exe`
+(instalator Windows), `PodsDesktop.exe` (portabil) și `PodsDesktop-linux-x86_64.bin`. La prima
+pornire, asistentul de configurare verifică Bluetooth-ul, te lasă să alegi AirPods-urile și
+opțiunile; poate fi repornit din meniul din tray sau cu `podsdesktop --setup`. Pe Linux din surse:
+`./packaging/install-linux.sh`, apoi `podsdesktop`. Pentru scripturi: `podsdesktop --battery`,
+`--json`, `--watch`. Setările sunt în `~/.config/podsdesktop/settings.json`.
 
-**Windows:** `pip install -e ".[gui,windows]"` și `python -m podsdesktop`; `packaging\build-windows.ps1`
-face un `PodsDesktop.exe`. Partea de Windows nu a fost încă rulată pe hardware real.
+**Windows din surse:** `pip install -e ".[gui,windows]"` și `python -m podsdesktop`;
+`packaging\build-windows.ps1` face `PodsDesktop.exe` și instalatorul. Partea de Windows e verificată
+față de declarațiile WinRT și în CI, dar nu a fost încă rulată cu AirPods reale.

@@ -51,6 +51,7 @@ class Settings:
     aap: bool = True                    # use the AAP session on Linux
     autostart: bool = False
     tray_show_percent: bool = True
+    setup_done: bool = False
     path: Path = field(default_factory=lambda: config_dir() / "settings.json", repr=False, compare=False)
 
     @classmethod

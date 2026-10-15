@@ -6,6 +6,7 @@ Linux talks to BlueZ over D-Bus (dbus-fast, already pulled in by bleak); Windows
 from __future__ import annotations
 
 import logging
+import re
 import sys
 from dataclasses import dataclass
 from typing import Awaitable, Callable, Protocol
@@ -15,6 +16,7 @@ from ..protocol.models import APPLE_VENDOR_ID, is_apple_audio_pid, lookup
 log = logging.getLogger(__name__)
 
 ConnectionCallback = Callable[[str, bool], Awaitable[None] | None]
+APPLE_AUDIO_NAME = re.compile(r"airpods|beats", re.I)
 
 
 @dataclass
@@ -27,7 +29,12 @@ class PairedDevice:
 
     @property
     def is_apple_audio(self) -> bool:
-        return self.vendor_id == APPLE_VENDOR_ID and self.product_id is not None and is_apple_audio_pid(self.product_id)
+        if self.vendor_id == APPLE_VENDOR_ID and self.product_id is not None:
+            return is_apple_audio_pid(self.product_id)
+        if self.vendor_id is None and self.product_id is None:
+            # no Device ID record readable (typical on Windows): trust the name
+            return bool(APPLE_AUDIO_NAME.search(self.name or ""))
+        return False
 
     @property
     def model_name(self) -> str:
@@ -42,6 +49,7 @@ class BluetoothBackend(Protocol):
     async def connect(self, address: str) -> None: ...
     async def disconnect(self, address: str) -> None: ...
     async def adapter_powered(self) -> bool: ...
+    async def power_on(self) -> None: ...
 
 
 def create_backend() -> BluetoothBackend:

@@ -12,7 +12,7 @@ from ..core.bluetooth import PairedDevice
 from ..core.settings import Settings
 from ..core.state import DeviceState
 from ..protocol import aap
-from . import i18n
+from . import i18n, images
 from .icons import tray_icon
 
 MODE_KEYS = {aap.MODE_OFF: "mode_off", aap.MODE_ANC: "mode_anc", aap.MODE_TRANSPARENCY: "mode_transparency", aap.MODE_ADAPTIVE: "mode_adaptive"}
@@ -28,6 +28,8 @@ class Tray(QObject):
     refresh_clicked = Signal()
     setting_toggled = Signal(str, bool)
     show_battery_clicked = Signal()
+    setup_clicked = Signal()
+    settings_clicked = Signal()
     fetch_keys_clicked = Signal()
     about_clicked = Signal()
     quit_clicked = Signal()
@@ -38,6 +40,7 @@ class Tray(QObject):
         self.state: DeviceState | None = None
         self.icon = QSystemTrayIcon(tray_icon(None), self)
         self.menu = QMenu()
+        self.menu.setWindowIcon(images.app_icon())
         self._build_menu()
         self.icon.setContextMenu(self.menu)
         self.icon.activated.connect(self._activated)
@@ -81,6 +84,10 @@ class Tray(QObject):
         self.a_refresh.triggered.connect(self.refresh_clicked.emit)
         self.update_devices([])
 
+        self.a_settings_dialog = m.addAction(i18n.t("settings_dialog"))
+        self.a_settings_dialog.triggered.connect(self.settings_clicked.emit)
+        self.a_setup = m.addAction(i18n.t("setup"))
+        self.a_setup.triggered.connect(self.setup_clicked.emit)
         self.settings_menu = m.addMenu(i18n.t("settings"))
         self.setting_actions: dict[str, QAction] = {}
         for key in SETTING_KEYS:
@@ -104,10 +111,10 @@ class Tray(QObject):
         self.a_quit.triggered.connect(self.quit_clicked.emit)
 
     def update_devices(self, devices: list[PairedDevice]) -> None:
-        self.device_menu.clear()
         for action in self.device_actions:
             self.device_group.removeAction(action)
         self.device_actions.clear()
+        self.device_menu.clear()  # deletes the menu-owned actions, so detach them from the group first
         if not devices:
             none = self.device_menu.addAction(i18n.t("none_paired"))
             none.setEnabled(False)

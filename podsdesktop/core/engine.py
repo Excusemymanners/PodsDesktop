@@ -191,6 +191,24 @@ class Engine:
         self.identity.rssi_min = self.settings.rssi_min
         self.tracker.enc_key = self.settings.enc_key_bytes
 
+    async def adapter_status(self) -> bool:
+        try:
+            powered = await self.bluetooth.adapter_powered()
+        except Exception as exc:  # noqa: BLE001
+            log.debug("adapter status: %s", exc)
+            powered = False
+        self._emit("adapter", powered)
+        return powered
+
+    async def power_on(self) -> None:
+        try:
+            await self.bluetooth.power_on()
+        except Exception as exc:  # noqa: BLE001
+            self._emit("error", str(exc))
+        await asyncio.sleep(1.0)
+        await self.adapter_status()
+        await self.refresh_devices()
+
     async def connect_device(self) -> None:
         if not self.settings.device_address:
             self._emit("error", "no device bound")

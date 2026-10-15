@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+import subprocess
 
 from dbus_fast import BusType, Message, MessageType
 from dbus_fast.aio import MessageBus
@@ -129,6 +130,13 @@ class BlueZBackend:
     async def disconnect(self, address: str) -> None:
         await self._device_call(address, "Disconnect")
 
+    async def _adapters(self) -> list[str]:
+        try:
+            objects = await self._managed_objects()
+        except RuntimeError:
+            return []
+        return [path for path, interfaces in objects.items() if ADAPTER_IFACE in interfaces]
+
     async def adapter_powered(self) -> bool:
         try:
             objects = await self._managed_objects()
@@ -139,3 +147,29 @@ class BlueZBackend:
             if adapter and _unwrap(adapter.get("Powered")):
                 return True
         return False
+
+    async def _set_powered(self, path: str) -> str | None:
+        from dbus_fast import Variant
+
+        bus = await self._ensure_bus()
+        reply = await bus.call(Message(destination=BLUEZ, path=path, interface=PROPS_IFACE, member="Set",
+                                       signature="ssv", body=[ADAPTER_IFACE, "Powered", Variant("b", True)]))
+        if reply.message_type == MessageType.ERROR:
+            return str(reply.body[0]) if reply.body else reply.error_name
+        return None
+
+    async def power_on(self) -> None:
+        adapters = await self._adapters()
+        if not adapters:
+            raise RuntimeError("no Bluetooth adapter found")
+        error = await self._set_powered(adapters[0])
+        if error and "rfkill" in error.lower() or error and "blocked" in error.lower():
+            # soft-blocked by rfkill: unblock (works for console users via /dev/rfkill ACLs) and retry
+            try:
+                await asyncio.to_thread(subprocess.run, ["rfkill", "unblock", "bluetooth"], check=False, timeout=5)
+            except (OSError, subprocess.SubprocessError):
+                pass
+            await asyncio.sleep(1)
+            error = await self._set_powered(adapters[0])
+        if error:
+            raise RuntimeError(f"could not power on Bluetooth: {error}")
